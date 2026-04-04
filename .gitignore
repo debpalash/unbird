@@ -1,0 +1,51 @@
+# dependencies
+node_modules/
+
+# build output
+out/
+dist/
+*.tgz
+
+# session credentials & data (NEVER commit)
+session/
+*.sqlite
+
+# runtime caches
+cache/
+
+# code coverage
+coverage/
+*.lcov
+
+# logs
+logs/
+*.log
+report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
+
+# environment files
+.env
+.env.local
+.env.*.local
+
+# editor / IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+# temporary / scratch files
+temp.json
+proxy_repos_temp.txt
+all_github_links.txt
+
+# Bun
+*.tsbuildinfo
+.cache/
+.eslintcache
+
+

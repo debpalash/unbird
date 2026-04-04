@@ -1,0 +1,21 @@
+services:
+  unbird:
+    build: .
+    container_name: unbird
+    restart: unless-stopped
+    ports:
+      - "${UNBIRD_PORT:-3069}:3069"
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
+    env_file:
+      - .env
+    volumes:
+      - ./session:/app/session
+      - ./cache:/app/cache
+    healthcheck:
+      test: ["CMD", "bun", "-e", "fetch('http://localhost:3069/api/health').then(r => r.ok ? process.exit(0) : process.exit(1)).catch(() => process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s

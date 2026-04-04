@@ -1,0 +1,451 @@
+@import "tailwindcss";
+
+/* ===== Nova Design System v2 — Pixel-Perfect Premium ===== */
+@theme {
+  /* Typography — Inter with precise optical sizing */
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+
+  /* Core Surfaces — ultra-deep blacks with subtle warmth */
+  --color-base: #050508;
+  --color-surface: rgba(255, 255, 255, 0.02);
+  --color-elevated: rgba(255, 255, 255, 0.04);
+  --color-hover: rgba(255, 255, 255, 0.06);
+
+  /* Borders — refined opacity hierarchy */
+  --color-border-subtle: rgba(255, 255, 255, 0.06);
+  --color-border-medium: rgba(255, 255, 255, 0.1);
+
+  /* Accent Palette — curated, high-contrast, balanced saturation */
+  --color-accent-blue: #1D9BF0;
+  --color-accent-violet: #A855F7;
+  --color-accent-emerald: #00BA7C;
+  --color-accent-rose: #F91880;
+  --color-accent-amber: #F5A623;
+
+  /* Text — precise contrast ratios for WCAG compliance */
+  --color-text-primary: #E7E9EA;
+  --color-text-secondary: #71767B;
+  --color-text-tertiary: #536471;
+  --color-text-link: #1D9BF0;
+
+  /* Radius — sharper, modern rounding */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+  --radius-2xl: 16px;
+}
+
+/* ===== Gruvbox Theme ===== */
+[data-theme="gruvbox"] {
+  --color-base: #1D2021;
+  --color-surface: rgba(235, 219, 178, 0.03);
+  --color-elevated: rgba(235, 219, 178, 0.06);
+  --color-hover: rgba(235, 219, 178, 0.09);
+
+  --color-border-subtle: rgba(235, 219, 178, 0.08);
+  --color-border-medium: rgba(235, 219, 178, 0.14);
+
+  --color-accent-blue: #458588;
+  --color-accent-violet: #B16286;
+  --color-accent-emerald: #98971A;
+  --color-accent-rose: #CC241D;
+  --color-accent-amber: #D79921;
+
+  --color-text-primary: #EBDBB2;
+  --color-text-secondary: #A89984;
+  --color-text-tertiary: #7C6F64;
+  --color-text-link: #83A598;
+}
+
+/* Gruvbox ambient glow */
+[data-theme="gruvbox"] body::after {
+  background: radial-gradient(ellipse, rgba(215, 153, 33, 0.04) 0%, rgba(177, 98, 134, 0.02) 30%, transparent 65%) !important;
+}
+
+/* Gruvbox selection */
+[data-theme="gruvbox"] ::selection {
+  background: rgba(215, 153, 33, 0.25);
+}
+
+/* Gruvbox focus ring */
+[data-theme="gruvbox"] :focus-visible {
+  outline-color: var(--color-accent-amber);
+}
+
+/* Gruvbox link hover */
+[data-theme="gruvbox"] a:hover {
+  color: #B8BB26;
+}
+
+/* Gruvbox gradient text */
+[data-theme="gruvbox"] .gradient-text {
+  background: linear-gradient(135deg, #D79921, #B16286, #CC241D);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-size: 200% auto;
+}
+
+/* Gruvbox glass hover glow */
+[data-theme="gruvbox"] .glass-card:hover {
+  box-shadow:
+    0 8px 30px -8px rgba(215, 153, 33, 0.12),
+    inset 0 0.5px 0 0 rgba(235, 219, 178, 0.06);
+}
+
+/* Gruvbox pill button primary */
+[data-theme="gruvbox"] .pill-btn-primary {
+  background: linear-gradient(135deg, #D79921, #B57614);
+  box-shadow: 0 2px 8px rgba(215, 153, 33, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+[data-theme="gruvbox"] .pill-btn-primary:hover {
+  box-shadow: 0 4px 16px rgba(215, 153, 33, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+}
+
+/* Gruvbox pulse glow */
+[data-theme="gruvbox"] .animate-pulse-glow {
+  animation: pulse-glow-gruvbox 4s ease-in-out infinite;
+}
+@keyframes pulse-glow-gruvbox {
+  0%, 100% { box-shadow: 0 0 12px rgba(215, 153, 33, 0.08); }
+  50% { box-shadow: 0 0 20px rgba(215, 153, 33, 0.2); }
+}
+
+/* Gruvbox scrollbar */
+[data-theme="gruvbox"] ::-webkit-scrollbar-thumb {
+  background: rgba(235, 219, 178, 0.1);
+}
+[data-theme="gruvbox"] ::-webkit-scrollbar-thumb:hover {
+  background: rgba(235, 219, 178, 0.2);
+}
+
+
+/* ===== Dracula Theme ===== */
+[data-theme="dracula"] {
+  --color-base: #282A36;
+  --color-surface: rgba(248, 248, 242, 0.03);
+  --color-elevated: rgba(248, 248, 242, 0.05);
+  --color-hover: rgba(248, 248, 242, 0.08);
+
+  --color-border-subtle: rgba(248, 248, 242, 0.07);
+  --color-border-medium: rgba(248, 248, 242, 0.12);
+
+  --color-accent-blue: #8BE9FD;
+  --color-accent-violet: #BD93F9;
+  --color-accent-emerald: #50FA7B;
+  --color-accent-rose: #FF79C6;
+  --color-accent-amber: #F1FA8C;
+
+  --color-text-primary: #F8F8F2;
+  --color-text-secondary: #9BA0B5;
+  --color-text-tertiary: #6272A4;
+  --color-text-link: #8BE9FD;
+}
+
+/* Dracula ambient glow */
+[data-theme="dracula"] body::after {
+  background: radial-gradient(ellipse, rgba(189, 147, 249, 0.05) 0%, rgba(255, 121, 198, 0.02) 30%, transparent 65%) !important;
+}
+
+/* Dracula selection */
+[data-theme="dracula"] ::selection {
+  background: rgba(189, 147, 249, 0.3);
+}
+
+/* Dracula focus ring */
+[data-theme="dracula"] :focus-visible {
+  outline-color: var(--color-accent-violet);
+}
+
+/* Dracula link hover */
+[data-theme="dracula"] a:hover {
+  color: #BD93F9;
+}
+
+/* Dracula gradient text */
+[data-theme="dracula"] .gradient-text {
+  background: linear-gradient(135deg, #BD93F9, #FF79C6, #8BE9FD);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-size: 200% auto;
+}
+
+/* Dracula glass hover glow */
+[data-theme="dracula"] .glass-card:hover {
+  box-shadow:
+    0 8px 30px -8px rgba(189, 147, 249, 0.15),
+    inset 0 0.5px 0 0 rgba(248, 248, 242, 0.06);
+}
+
+/* Dracula pill button primary */
+[data-theme="dracula"] .pill-btn-primary {
+  background: linear-gradient(135deg, #BD93F9, #9B6DFF);
+  box-shadow: 0 2px 8px rgba(189, 147, 249, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+}
+[data-theme="dracula"] .pill-btn-primary:hover {
+  box-shadow: 0 4px 16px rgba(189, 147, 249, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.18);
+}
+
+/* Dracula pulse glow */
+[data-theme="dracula"] .animate-pulse-glow {
+  animation: pulse-glow-dracula 4s ease-in-out infinite;
+}
+@keyframes pulse-glow-dracula {
+  0%, 100% { box-shadow: 0 0 12px rgba(189, 147, 249, 0.08); }
+  50% { box-shadow: 0 0 20px rgba(189, 147, 249, 0.2); }
+}
+
+/* Dracula scrollbar */
+[data-theme="dracula"] ::-webkit-scrollbar-thumb {
+  background: rgba(248, 248, 242, 0.08);
+}
+[data-theme="dracula"] ::-webkit-scrollbar-thumb:hover {
+  background: rgba(248, 248, 242, 0.16);
+}
+
+/* ===== Theme Transition (smooth swap) ===== */
+html[data-theme] {
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+html[data-theme] body {
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* ===== Base Layer ===== */
+@layer base {
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+  }
+
+  body {
+    @apply bg-base text-text-primary font-sans;
+    overflow-x: hidden;
+    line-height: 1.5;
+    letter-spacing: -0.011em;
+  }
+
+  /* Film grain — ultra-subtle for depth */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    opacity: 0.018;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    background-size: 256px;
+  }
+
+  /* Ambient top glow — more refined, softer spread */
+  body::after {
+    content: "";
+    position: fixed;
+    top: -40%;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 140%;
+    height: 50%;
+    border-radius: 50%;
+    background: radial-gradient(ellipse, rgba(29, 155, 240, 0.04) 0%, rgba(139, 92, 246, 0.02) 30%, transparent 65%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* Links */
+  a {
+    @apply text-text-link no-underline;
+    transition: color 0.15s ease, opacity 0.15s ease;
+  }
+  a:hover {
+    color: #4DB5F5;
+  }
+
+  /* Headings */
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-bold;
+    letter-spacing: -0.03em;
+  }
+
+  /* Selection */
+  ::selection {
+    background: rgba(29, 155, 240, 0.25);
+    color: inherit;
+  }
+
+  /* Focus ring */
+  :focus-visible {
+    outline: 2px solid var(--color-accent-blue);
+    outline-offset: 2px;
+    border-radius: var(--radius-sm);
+  }
+
+  /* Input / button reset */
+  input, textarea, select, button {
+    font-family: inherit;
+    font-size: inherit;
+    letter-spacing: inherit;
+  }
+}
+
+/* ===== Glass Components — premium glassmorphism ===== */
+@layer components {
+  .glass {
+    @apply bg-surface border border-border-subtle rounded-lg;
+    backdrop-filter: blur(24px) saturate(180%);
+    -webkit-backdrop-filter: blur(24px) saturate(180%);
+    box-shadow:
+      inset 0 0.5px 0 0 rgba(255, 255, 255, 0.06),
+      0 0 0 0.5px rgba(255, 255, 255, 0.02);
+  }
+
+  .glass-elevated {
+    @apply bg-elevated border border-border-medium rounded-lg;
+    backdrop-filter: blur(40px) saturate(200%);
+    -webkit-backdrop-filter: blur(40px) saturate(200%);
+    box-shadow:
+      0 8px 32px rgba(0, 0, 0, 0.5),
+      0 1px 2px rgba(0, 0, 0, 0.3),
+      inset 0 0.5px 0 0 rgba(255, 255, 255, 0.06);
+  }
+
+  .glass-card {
+    @apply bg-surface border border-border-subtle rounded-lg;
+    backdrop-filter: blur(20px) saturate(150%);
+    -webkit-backdrop-filter: blur(20px) saturate(150%);
+    box-shadow: inset 0 0.5px 0 0 rgba(255, 255, 255, 0.04);
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .glass-card:hover {
+    @apply bg-hover border-border-medium;
+    transform: translateY(-1px);
+    box-shadow:
+      0 8px 30px -8px rgba(29, 155, 240, 0.12),
+      inset 0 0.5px 0 0 rgba(255, 255, 255, 0.06);
+  }
+
+  /* Gradient text — flowing animation */
+  .gradient-text {
+    @apply font-extrabold;
+    background: linear-gradient(135deg, var(--color-accent-blue), var(--color-accent-violet), var(--color-accent-rose));
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-size: 200% auto;
+    animation: gradient-flow 6s ease infinite;
+  }
+
+  @keyframes gradient-flow {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+  }
+
+  /* Premium pill button */
+  .pill-btn {
+    @apply px-4 py-2 rounded-2xl text-sm font-semibold;
+    @apply border border-border-subtle bg-surface;
+    @apply transition-all duration-200;
+    backdrop-filter: blur(12px);
+  }
+  .pill-btn:hover {
+    @apply bg-hover border-border-medium;
+    transform: translateY(-0.5px);
+  }
+  .pill-btn-primary {
+    @apply px-4 py-2 rounded-2xl text-sm font-semibold text-white;
+    background: linear-gradient(135deg, var(--color-accent-blue), #2563EB);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 2px 8px rgba(29, 155, 240, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .pill-btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 16px rgba(29, 155, 240, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  }
+
+  /* Separator line — premium gradient fade */
+  .separator {
+    height: 1px;
+    background: linear-gradient(to right, transparent, var(--color-border-subtle) 20%, var(--color-border-medium) 50%, var(--color-border-subtle) 80%, transparent);
+  }
+}
+
+/* ===== Scrollbar — refined, thinner ===== */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+@layer utilities {
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+  .hide-scrollbar::-webkit-scrollbar { display: none; }
+  .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+}
+
+/* ===== Animations — smooth, intentional ===== */
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 12px rgba(29, 155, 240, 0.08); }
+  50% { box-shadow: 0 0 20px rgba(29, 155, 240, 0.2); }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 4s ease-in-out infinite;
+}
+
+.animate-shimmer {
+  background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.04) 50%, transparent 100%);
+  background-size: 200% 100%;
+  animation: shimmer 2s ease-in-out infinite;
+}
+
+/* ===== Accessibility ===== */
+@media (prefers-reduced-motion) {
+  *, ::before, ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ===== Interactivity Polish ===== */
+
+/* Tweet text link styling */
+.text-text-primary a {
+  color: var(--color-text-link);
+  text-decoration: none;
+}
+.text-text-primary a:hover {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}

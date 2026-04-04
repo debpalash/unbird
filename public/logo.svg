@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" fill="none">
+  <!-- 
+    Premium Monochrome Hummingbird
+    Uses solid white shapes with varied opacity for depth.
+    Clean elegant curves, sharp wingtips, and a v-cut tail.
+  -->
+
+  <!-- Back Wing -->
+  <path d="M 140 90 
+           C 100 25, 40 10, 30 30 
+           C 60 55, 100 95, 125 110 Z" 
+        fill="white" opacity="0.4"/>
+  
+  <!-- Body (with V-cut tail) -->
+  <path d="M 140 75 
+           C 180 110, 140 170, 80 235 
+           L 95 205 
+           L 65 220 
+           C 100 175, 100 120, 125 95 Z" 
+        fill="white" opacity="0.75"/>
+  
+  <!-- Front Wing -->
+  <path d="M 125 105 
+           C 80 40, 30 20, 15 50 
+           C 40 80, 80 120, 110 135 Z" 
+        fill="white" opacity="1.0"/>
+  
+  <!-- Head -->
+  <circle cx="150" cy="85" r="16" fill="white" opacity="0.95"/>
+  
+  <!-- Long Beak -->
+  <path d="M 155 75 
+           Q 210 60, 235 55 
+           Q 180 85, 155 98 Z" 
+        fill="white" opacity="0.95"/>
+  
+  <!-- Cutout Eye -->
+  <!-- We use the background color for the 'cutout' to be visible anywhere, with a tiny white glint -->
+  <circle cx="155" cy="82" r="4.5" fill="#050508"/>
+  <circle cx="156.5" cy="80.5" r="1.5" fill="white"/>
+</svg>
