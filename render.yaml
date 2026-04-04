@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: unbird
+    env: docker
+    dockerfilePath: ./Dockerfile
+    startCommand: "bun src/index.ts"
+    healthCheckPath: /api/health
+    envVars:
+      - key: UNBIRD_HMAC_KEY
+        generateValue: true
+      - key: LOG_LEVEL
+        value: info
+      - key: PORT
+        value: 3069
+    autoDeploy: false
