@@ -1,0 +1,15 @@
+name: unbird
+version: 1.0
+
+services:
+  web:
+    type: web
+    env: docker
+    dockerfile: Dockerfile
+    command: bun src/index.ts
+    ports:
+      - 3069:3069
+    healthz: /api/health
+    env_vars:
+      UNBIRD_HMAC_KEY: "change-this-in-dashboard"
+      LOG_LEVEL: "info"
