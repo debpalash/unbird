@@ -5,8 +5,15 @@
 <h1 align="center">unbird</h1>
 
 <p align="center">
-  <strong>A privacy-first, self-hosted X/Twitter frontend.</strong><br/>
-  No tracking. No ads. No algorithms. Just tweets.
+  <a href="https://github.com/user4/unbird/stargazers"><img alt="GitHub Repo stars" src="https://img.shields.io/github/stars/user4/unbird?style=flat-square&color=00A3FF"></a>
+  <a href="https://github.com/user4/unbird/blob/main/LICENSE"><img alt="License" src="https://img.shields.io/github/license/user4/unbird?style=flat-square&color=indigo"></a>
+  <img alt="Bun" src="https://img.shields.io/badge/Bun-%23000000.svg?style=flat-square&logo=bun&logoColor=white">
+  <img alt="Docker" src="https://img.shields.io/badge/Docker-Ready-%232496ED.svg?style=flat-square&logo=docker&logoColor=white">
+</p>
+
+<p align="center">
+  <strong>A privacy-first, self-hosted X/Twitter alternative frontend.</strong><br/>
+  No tracking. No ads. No algorithms. OSINT-ready. Just tweets.
 </p>
 
 <p align="center">
