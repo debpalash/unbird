@@ -1,0 +1,11 @@
+# .railwayignore
+
+# Remove caching and local persist stores from the build image uploaded to railway
+session/
+cache/
+node_modules/
+.env
+.env.local
+.git
+.github
+*.log
