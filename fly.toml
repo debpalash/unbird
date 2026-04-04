@@ -1,0 +1,35 @@
+app = "unbird"
+primary_region = "iad"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  PORT = "3069"
+  LOG_LEVEL = "info"
+  # UNBIRD_HMAC_KEY = "<run fly secrets set UNBIRD_HMAC_KEY=...>"
+
+[http_service]
+  internal_port = 3069
+  force_https = true
+  auto_stop_machines = true
+  auto_start_machines = true
+  min_machines_running = 1
+  processes = ["app"]
+
+[http_service.concurrency]
+  type = "connections"
+  hard_limit = 250
+  soft_limit = 200
+
+[[http_service.checks]]
+  grace_period = "10s"
+  interval = "15s"
+  timeout = "2s"
+  method = "GET"
+  path = "/api/health"
+
+# Uncomment below if you provisioned a Fly volume for persistent sessions
+# [mounts]
+#   source = "unbird_data"
+#   destination = "/app/session"
