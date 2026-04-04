@@ -1,0 +1,13 @@
+name = "unbird"
+compatibility_date = "2026-04-04"
+main = "src/index.ts"
+
+# [vars]
+# UNBIRD_HMAC_KEY = "your-secret-key"
+
+# [[kv_namespaces]]
+# binding = "unbird_sessions"
+# id = "..."
+
+# [triggers]
+# crons = ["*/5 * * * *"] # Keep sessions and proxies alive
