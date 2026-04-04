@@ -1,0 +1,21 @@
+{
+  "project": "unbird",
+  "name": "unbird-api",
+  "type": "deployment",
+  "deployment": {
+    "instances": 1,
+    "build": {
+      "engine": "dockerfile",
+      "dockerfilePath": "/Dockerfile",
+      "buildContext": "/"
+    },
+    "ports": [
+      {
+        "name": "http",
+        "internalPort": 3069,
+        "public": true,
+        "protocol": "HTTP"
+      }
+    ]
+  }
+}
