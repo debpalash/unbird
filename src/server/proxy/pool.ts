@@ -1,5 +1,4 @@
-import { readFile, writeFile, mkdir } from "fs/promises";
-import { dirname } from "path";
+// Migrated to Cloudflare KV
 import { fetchAllProxySources } from "./sources";
 import { validateProxiesConcurrently } from "./validator";
 import { DEFAULT_POOL_CONFIG } from "./types";
@@ -10,31 +9,32 @@ let lastFetchedAt = 0;
 let lastValidatedAt = 0;
 let isRefreshing = false;
 
-export async function loadPool(config = DEFAULT_POOL_CONFIG) {
+export async function loadPool(env: any, config = DEFAULT_POOL_CONFIG) {
+  if (!env?.UNBIRD_CACHE) return;
   try {
-    const data = await readFile(config.cachePath, "utf8");
-    const parsed = JSON.parse(data);
-    currentPool = parsed.proxies || [];
-    lastFetchedAt = parsed.lastFetchedAt || 0;
-    lastValidatedAt = parsed.lastValidatedAt || 0;
-    console.log(`[proxy-pool] Loaded ${currentPool.length} proxies from cache`);
+    const dataStr = await env.UNBIRD_CACHE.get("proxy_pool.json");
+    if (dataStr) {
+      const parsed = JSON.parse(dataStr);
+      currentPool = parsed.proxies || [];
+      lastFetchedAt = parsed.lastFetchedAt || 0;
+      lastValidatedAt = parsed.lastValidatedAt || 0;
+      console.log(`[proxy-pool] Loaded ${currentPool.length} proxies from KV cache`);
+    }
   } catch (e) {
     console.log("[proxy-pool] No cache found, starting fresh");
   }
 }
 
-export async function savePool(config = DEFAULT_POOL_CONFIG) {
+export async function savePool(env: any, config = DEFAULT_POOL_CONFIG) {
+  if (!env?.UNBIRD_CACHE) return;
   try {
-    await mkdir(dirname(config.cachePath), { recursive: true });
-    await writeFile(config.cachePath, JSON.stringify({
+    await env.UNBIRD_CACHE.put("proxy_pool.json", JSON.stringify({
       lastFetchedAt, lastValidatedAt, proxies: currentPool
-    }, null, 2), "utf8");
-  } catch(e) {
-    console.warn("[proxy-pool] Failed to save cache cachePath:", config.cachePath);
-  }
+    }));
+  } catch(e) { }
 }
 
-export async function refreshPool(config = DEFAULT_POOL_CONFIG) {
+export async function refreshPool(env: any, config = DEFAULT_POOL_CONFIG) {
   if (isRefreshing) return;
   isRefreshing = true;
   console.log("[proxy-pool] Starting refresh cycle...");
@@ -51,7 +51,7 @@ export async function refreshPool(config = DEFAULT_POOL_CONFIG) {
     // Sort highest score (best region & lowest latency) first
     currentPool = alive.sort((a, b) => b.score - a.score);
     console.log(`[proxy-pool] Refresh complete. ${currentPool.length} proxies alive.`);
-    await savePool(config);
+    await savePool(env, config);
   } catch (e) {
     console.error("[proxy-pool] Failed to refresh pool", e);
   } finally {
@@ -113,14 +113,18 @@ export async function pingTopProxies() {
   }
 }
 
-export function startProxyPool(config = DEFAULT_POOL_CONFIG) {
-  loadPool(config).then(() => {
-    if (currentPool.length === 0 || Date.now() - lastFetchedAt > config.refreshIntervalMs) {
-      refreshPool(config);
-    }
-    setInterval(() => refreshPool(config), config.refreshIntervalMs);
-    setInterval(pingTopProxies, 30 * 1000); // Background ping every 30 seconds
-  });
+// Cloudflare Cron Entrypoint
+export async function cronProxyPool(env: any, config = DEFAULT_POOL_CONFIG) {
+  await loadPool(env, config);
+  if (currentPool.length === 0 || Date.now() - lastFetchedAt > config.refreshIntervalMs) {
+    await refreshPool(env, config);
+  }
+  await pingTopProxies();
+}
+
+// Deprecated
+export function startProxyPool() {
+  // throw new Error("startProxyPool() is deprecated. Use cronProxyPool.");
 }
 
 export function getProxy(strategy: "fastest" | "balanced" | "random" = "random"): ValidatedProxy | null {

@@ -1,16 +1,28 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-// Hono API server — runs on Bun, separate from Vite frontend
+// Hono API server — Cloudflare Workers Entrypoint
 
-import { startServer } from "./server/app";
+import { createApp } from "./server/app";
+import { cronProxyPool } from "./server/proxy/pool";
+import { refreshAggregator } from "./server/aggregator";
 
-const { app, cfg } = await startServer();
+const { app } = createApp();
 
-const server = Bun.serve({
-  port: cfg.port,
-  idleTimeout: 120, // 120s for long-running feed builds
+export default {
   fetch: app.fetch,
-});
 
-console.log(`🚀 unbird API server running at ${server.url}`);
-console.log(`   Health: ${server.url}api/health`);
-console.log(`   Sessions: ${server.url}api/sessions`);
+  /**
+   * Cloudflare Cron Trigger (configured in wrangler.toml)
+   * Handles periodic aggregator and proxy pool cycles
+   */
+  async scheduled(event: any, env: any, ctx: any) {
+    console.log(`[cron] Triggered at ${new Date().toISOString()}`);
+
+    // Init session pool for cron (Workers don't persist state across invocations)
+    const { startSessionManager } = await import("./server/sessions/manager");
+    await startSessionManager(env);
+
+    // Run background tasks concurrently without blocking worker execution
+    ctx.waitUntil(cronProxyPool(env));
+    ctx.waitUntil(refreshAggregator(env));
+  }
+};

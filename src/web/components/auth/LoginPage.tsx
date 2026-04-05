@@ -9,6 +9,7 @@ export function LoginPage() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [totp, setTotp] = useState("");
+  const [email, setEmail] = useState("");
   const [pin, setPin] = useState("");
   const [tempSession, setTempSession] = useState<any>(null);
   const [loading, setLoading] = useState(false);
@@ -27,7 +28,7 @@ export function LoginPage() {
       const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, password, totp }),
+        body: JSON.stringify({ username, password, totp: totp || undefined, email: email || undefined }),
       });
       const data = await res.json();
       if (!res.ok || data.error) throw new Error(data.error || "Login failed");
@@ -154,6 +155,12 @@ export function LoginPage() {
                 <input 
                   type="text" value={totp} onChange={(e) => setTotp(e.target.value)}
                   placeholder="2FA Code or Secret (Optional)" disabled={loading}
+                  className="w-full bg-surface border border-border-subtle rounded-xl px-4 py-3 text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-accent-blue focus:ring-1 focus:ring-accent-blue transition-all"
+                />
+
+                <input 
+                  type="email" value={email} onChange={(e) => setEmail(e.target.value)}
+                  placeholder="Email (if Twitter asks for verification)" disabled={loading}
                   className="w-full bg-surface border border-border-subtle rounded-xl px-4 py-3 text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-accent-blue focus:ring-1 focus:ring-accent-blue transition-all"
                 />
 

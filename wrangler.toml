@@ -1,13 +1,22 @@
 name = "unbird"
 compatibility_date = "2026-04-04"
+compatibility_flags = ["nodejs_compat"]
 main = "src/index.ts"
 
-# [vars]
-# UNBIRD_HMAC_KEY = "your-secret-key"
+# Serve the Vite frontend as static assets
+[assets]
+directory = "./dist"
 
-# [[kv_namespaces]]
-# binding = "unbird_sessions"
-# id = "..."
+[vars]
+UNBIRD_HMAC_KEY = "your-secret-key-change-me-later"
 
-# [triggers]
-# crons = ["*/5 * * * *"] # Keep sessions and proxies alive
+[[kv_namespaces]]
+binding = "UNBIRD_SESSIONS"
+id = "35683496ea164e2eb8210607897b859b"
+
+[[kv_namespaces]]
+binding = "UNBIRD_CACHE"
+id = "b9405727692d43698c544bfb9b46adde"
+
+[triggers]
+crons = ["*/5 * * * *"]

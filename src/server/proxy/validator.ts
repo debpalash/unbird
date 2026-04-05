@@ -1,4 +1,3 @@
-import geoip from "geoip-lite";
 import type { RawProxy, ValidatedProxy, ProxyPoolConfig } from "./types";
 
 const TARGET_REGIONS = new Set([
@@ -12,8 +11,7 @@ export async function validateProxy(
   config: ProxyPoolConfig,
   sourceName: string
 ): Promise<ValidatedProxy | null> {
-  const geo = geoip.lookup(raw.host);
-  const countryCode = geo?.country || "UNKNOWN";
+  const countryCode = "UNKNOWN"; // Stripped geoip for Cloudflare Edge
   
   // Optionally penalize or reject if not in target regions, but for now we just score lower
   // "we prefer using proxy thats mostly in us, canada, europe"

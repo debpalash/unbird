@@ -266,7 +266,7 @@ async function fetchWithRetry(
       if (e instanceof RateLimitError) {
         const backoff = retryDelayMs * Math.pow(2, attempt);
         console.log(`[sessions] Rate limited, retrying ${apiKey} (${attempt + 1}/${maxRetries}) after ${backoff}ms...`);
-        if (backoff > 0) await Bun.sleep(backoff);
+        if (backoff > 0) await new Promise(r => setTimeout(r, backoff));
         continue;
       }
 

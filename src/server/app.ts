@@ -4,15 +4,15 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { logger } from "hono/logger";
-import { serveStatic } from "hono/bun";
+// serveStatic removed for Cloudflare Workers compatibility (no Bun runtime)
 
 import { loadConfig } from "./config";
 import { getSessionPoolHealth, getSessionPoolSize, getAvailableLenses, requestSessionCtx } from "./sessions/pool";
-import { startSessionManager, addSessionFromCookies, reloadSessions, stopSessionManager, getSessionAccountInfo } from "./sessions/manager";
-import { startAggregator, globalPublicFeedCache } from "./aggregator";
+import { startSessionManager, addSessionFromCookies, getSessionAccountInfo } from "./sessions/manager";
+import { globalPublicFeedCache, loadAggregatorCache, refreshAggregator } from "./aggregator";
 import { setApiProxy } from "./twitter/client";
 import { NoSessionsError, SessionKind, type Session } from "./types";
-import { startProxyPool, getPoolStats } from "./proxy/pool";
+import { getPoolStats } from "./proxy/pool";
 import { loginWithCredentials } from "./sessions/login";
 
 // Route modules
@@ -57,7 +57,7 @@ async function getFollowingList(userId: string): Promise<any[]> {
   }
   if (userFollowingBuilding.has(userId)) {
     // Another fetch is in progress for this user — wait up to 120s
-    for (let i = 0; i < 120 && userFollowingBuilding.has(userId); i++) await Bun.sleep(1000);
+    for (let i = 0; i < 120 && userFollowingBuilding.has(userId); i++) await new Promise(r => setTimeout(r, 1000));
     return userFollowingCache.get(userId)?.users ?? [];
   }
   userFollowingBuilding.add(userId);
@@ -93,8 +93,8 @@ const feedRateLimitedUntil = new Map<string, number>();
 const FEED_TTL_MS = 30 * 60 * 1000;
 const FEED_RL_RETRY_MS = 16 * 60 * 1000; // 16 min backoff when rate limited
 
-async function buildFeedCache(postsPerUser = 3) {
-  const me = await getSessionAccountInfo();
+async function buildFeedCache(env: any, postsPerUser = 3) {
+  const me = await getSessionAccountInfo(env);
   if (!me) return;
   const userId = me.id;
 
@@ -113,7 +113,7 @@ async function buildFeedCache(postsPerUser = 3) {
   console.log(`[feed] starting build for @${me.username} (${postsPerUser} posts/user)...`);
   try {
     const { getGraphHomeLatestTimeline } = await import("./twitter/api");
-    if (!userTweetCache.has(userId)) await loadUserCache(userId);
+    if (!userTweetCache.has(userId)) await loadUserCache(env, userId);
 
     let allTweets: any[] = [];
     let cursor = "";
@@ -169,9 +169,10 @@ async function buildFeedCache(postsPerUser = 3) {
     };
     userFeedCache.set(userId, finalCache);
 
-    await ensureCacheDir();
-    await Bun.write(`${CACHE_DIR}/feed_${userId}.json`, JSON.stringify(finalCache));
-    await saveUserCache(userId);
+    if (env?.UNBIRD_CACHE) {
+      await env.UNBIRD_CACHE.put(`feed_${userId}.json`, JSON.stringify(finalCache));
+    }
+    await saveUserCache(env, userId);
     console.log(`[feed] done for @${me.username}: ${allTweets.length} tweets`);
   } catch (e: any) {
     console.error(`[feed] error for @${me.username}:`, e.message);
@@ -188,49 +189,43 @@ const USER_TWEETS_TTL_MS = 6 * 60 * 60 * 1000; // 6 hours
 // Map<userId, Map<username, data>>
 const userTweetCache = new Map<string, Map<string, { tweets: any[], fetchedAt: number }>>();
 
-// --- Disk Persistence for Caches ---
-const CACHE_DIR = process.env.CACHE_DIR ?? "./cache";
+// --- Cloudflare KV Persistence for Caches ---
+// Note: This relies on UNBIRD_CACHE KV namespace
 
-async function ensureCacheDir() {
-  const { mkdir } = await import("node:fs/promises");
-  await mkdir(CACHE_DIR, { recursive: true });
-}
-
-async function saveUserCache(userId: string) {
+async function saveUserCache(env: any, userId: string) {
   const cache = userTweetCache.get(userId);
-  if (!cache) return;
-  await ensureCacheDir();
-  await Bun.write(`${CACHE_DIR}/user_tweets_${userId}.json`, JSON.stringify(Array.from(cache.entries())));
+  if (!cache || !env?.UNBIRD_CACHE) return;
+  await env.UNBIRD_CACHE.put(`user_tweets_${userId}.json`, JSON.stringify(Array.from(cache.entries())));
 }
 
-async function loadUserCache(userId: string) {
+async function loadUserCache(env: any, userId: string) {
+  if (!env?.UNBIRD_CACHE) return;
   try {
-    const f = Bun.file(`${CACHE_DIR}/user_tweets_${userId}.json`);
-    if (await f.exists()) {
-      const data = await f.json();
+    const dataStr = await env.UNBIRD_CACHE.get(`user_tweets_${userId}.json`);
+    if (dataStr) {
+      const data = JSON.parse(dataStr);
       const map = new Map();
       for (const [id, val] of data) map.set(id, val);
       userTweetCache.set(userId, map);
-      console.log(`[cache] loaded ${map.size} user histories for ${userId} from disk`);
     }
   } catch (e) { /* ignore */ }
 }
 
-async function loadFeedCacheDisk(userId: string) {
+async function loadFeedCacheDisk(env: any, userId: string) {
+  if (!env?.UNBIRD_CACHE) return;
   try {
-    const f = Bun.file(`${CACHE_DIR}/feed_${userId}.json`);
-    if (await f.exists()) {
-      const data: FeedCache = await f.json();
+    const dataStr = await env.UNBIRD_CACHE.get(`feed_${userId}.json`);
+    if (dataStr) {
+      const data = JSON.parse(dataStr);
       userFeedCache.set(userId, data);
-      console.log(`[cache] restored home feed for ${userId} from disk`);
     }
   } catch (e) { /* ignore */ }
 }
 
 // --- End of Cache Logic ---
 
-export async function getCachedTweets(): Promise<any[]> {
-  const me = await getSessionAccountInfo();
+export async function getCachedTweets(env?: any): Promise<any[]> {
+  const me = await getSessionAccountInfo(env);
   if (!me) return [];
   const feed = userFeedCache.get(me.id);
   const uCache = userTweetCache.get(me.id);
@@ -265,6 +260,17 @@ export function createApp() {
   if (cfg.enableDebug) {
     app.use("*", logger());
   }
+
+  // Lazy session pool initialization (Workers have no persistent startup)
+  let sessionPoolReady = false;
+  app.use("/api/*", async (c, next) => {
+    if (!sessionPoolReady) {
+      await startSessionManager(c.env);
+      await loadAggregatorCache(c.env);
+      sessionPoolReady = true;
+    }
+    await next();
+  });
 
   // --- Admin auth middleware for sensitive routes ---
   const requireAdmin = async (c: any, next: any) => {
@@ -359,10 +365,43 @@ export function createApp() {
     }
   });
 
+  // Root — landing page for the API
+  app.get("/", (c) =>
+    c.json({
+      name: "unbird",
+      status: "ok",
+      version: "0.1.0",
+      docs: "/api/health",
+      runtime: "Cloudflare Workers",
+    })
+  );
+
   // Health
   app.get("/api/health", (c) =>
     c.json({ status: "ok", timestamp: Date.now(), sessions: getSessionPoolSize(), proxies: getPoolStats() })
   );
+
+  // Debug: test Twitter API connectivity
+  app.get("/api/debug/test", async (c) => {
+    try {
+      const { getGraphUser } = await import("./twitter/api");
+      const result = await getGraphUser("elonmusk");
+      return c.json({ ok: true, user: result?.username || result });
+    } catch (e: any) {
+      return c.json({ ok: false, error: e.message, stack: e.stack?.split("\n").slice(0, 5) }, 500);
+    }
+  });
+
+  // Debug: test search specifically
+  app.get("/api/debug/search", async (c) => {
+    try {
+      const { getGraphUserSearch, getGraphTweetSearch } = await import("./twitter/api");
+      const result = await getGraphUserSearch("elon");
+      return c.json({ ok: true, result });
+    } catch (e: any) {
+      return c.json({ ok: false, error: e.message, stack: e.stack?.split("\n").slice(0, 5) }, 500);
+    }
+  });
 
   // Session info (admin only — exposes pool internals)
   app.get("/api/sessions", requireAdmin, (c) => {
@@ -434,10 +473,10 @@ export function createApp() {
     }
   });
 
-  // Reload sessions from file (admin only)
+  // Reload sessions from KV natively instead of file system webhook
   app.post("/api/sessions/reload", requireAdmin, async (c) => {
     try {
-      await reloadSessions();
+      await startSessionManager(c.env);
       return c.json({ status: "reloaded", sessions: getSessionPoolSize() });
     } catch (e: any) {
       return c.json({ error: e.message }, 500);
@@ -466,11 +505,13 @@ export function createApp() {
       entry.count++;
     }
     try {
-      const { username, password, totp } = await c.req.json();
+      const { username, password, totp, email } = await c.req.json();
       if (!username || !password) {
         return c.json({ error: "username and password are required" }, 400);
       }
-      const loginResult = await loginWithCredentials(username, password, totp);
+      const loginResult = await loginWithCredentials(username, password, totp, email);
+      // Auto-save to KV so the session persists
+      await addSessionFromCookies(c.env, loginResult.auth_token, loginResult.ct0, loginResult.username, loginResult.id ?? undefined);
       return c.json(loginResult);
     } catch (e: any) {
       return c.json({ error: e.message }, 401);
@@ -555,7 +596,7 @@ export function createApp() {
     
     let cache = userFeedCache.get(userId);
     if (!cache) {
-      await loadFeedCacheDisk(userId);
+      await loadFeedCacheDisk(c.env, userId);
       cache = userFeedCache.get(userId);
     }
 
@@ -563,7 +604,7 @@ export function createApp() {
 
     // Trigger build if no cache yet or postsPerUser changed
     if ((!cache || cache.postsPerUser !== postsPerUser) && !building && !rlActive) {
-      buildFeedCache(postsPerUser); // fire-and-forget
+      buildFeedCache(c.env, postsPerUser); // fire-and-forget
     }
 
     if (!cache) {
@@ -616,7 +657,13 @@ export function createApp() {
   // POST /api/home-feed/refresh — force rebuild (admin only — prevents DoS)
   app.post("/api/home-feed/refresh", requireAdmin, (c) => {
     const postsPerUser = Math.min(Math.max(parseInt(c.req.query("postsPerUser") ?? "3"), 1), 20);
-    buildFeedCache(postsPerUser);
+    buildFeedCache(c.env, postsPerUser);
+    return c.json({ status: "building" });
+  });
+
+  // POST /api/public-feed/refresh — force rebuild of global public feed (admin only)
+  app.post("/api/public-feed/refresh", requireAdmin, async (c) => {
+    c.executionCtx.waitUntil(refreshAggregator(c.env));
     return c.json({ status: "building" });
   });
 
@@ -683,43 +730,18 @@ export function createApp() {
     }
   });
 
-  // --- Static Serving (Production Only) ---
-  if (process.env.NODE_ENV === "production") {
-    app.use("/*", serveStatic({ root: "./dist" }));
-    app.get("*", async (c) => {
-      const { readFile } = await import("node:fs/promises");
-      try {
-        const html = await readFile("./dist/index.html", "utf-8");
-        return c.html(html);
-      } catch {
-        return c.text("Not found", 404);
-      }
-    });
-  }
+  // Static assets are served via Cloudflare Pages (not from Workers)
 
   return { app, cfg };
 }
-
 export async function startServer() {
   const { app, cfg } = createApp();
 
-  // Configure proxy
   if (cfg.proxy) {
     setApiProxy(cfg.proxy);
   }
 
-  // Start session manager (loads from file, health checks)
-  await startSessionManager();
-
-  // Start proxy pool background manager
-  startProxyPool();
-
-  // Start background aggregator for public feed
-  startAggregator();
-
-  // Graceful shutdown
-  process.on("SIGINT", () => { stopSessionManager(); process.exit(0); });
-  process.on("SIGTERM", () => { stopSessionManager(); process.exit(0); });
+  console.log("[unbird] Deferring init to first worker request...");
 
   return { app, cfg };
 }

@@ -1,5 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-// X/Twitter login — Cloudflare Workers compatible (standard fetch, no native bindings)
+// Raw HTTP login to X/Twitter — uses wreq-js for Chrome TLS impersonation
+// No browser, no Python, no Playwright. Runs natively on Bun.
+
+import { appendFile, mkdir } from "node:fs/promises";
+import { dirname } from "node:path";
+import wreq from "wreq-js";
 
 const BEARER_TOKEN =
   "AAAAAAAAAAAAAAAAAAAAAFQODgEAAAAAVHTp76lzh3rFzcHbmHVvQxYYpTw%3DckAlMINMjmCwxUcaXbAN4XqJVdgMJaHqNOFgPMK0zN1qLqLQCF";
@@ -30,7 +35,7 @@ export interface LoginResult {
   ct0: string;
 }
 
-// --- TOTP via Web Crypto API (works in Workers) ---
+// --- TOTP via Web Crypto API (no dependencies needed) ---
 
 async function generateTotp(base32Secret: string): Promise<string> {
   const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
@@ -67,8 +72,8 @@ function parseTotpSecret(raw?: string): string | undefined {
   return raw;
 }
 
-function extractUserId(cookies: Map<string, string>): string | null {
-  const twid = (cookies.get("twid") ?? "").replace(/^"|"$/g, "");
+function extractUserId(cookies: Record<string, string>): string | null {
+  const twid = (cookies.twid ?? "").replace(/^"|"$/g, "");
   for (const prefix of ["u=", "u%3D"]) {
     if (twid.includes(prefix)) {
       return twid.split(prefix)[1]?.split("&")[0]?.replace(/"/g, "") ?? null;
@@ -77,75 +82,35 @@ function extractUserId(cookies: Map<string, string>): string | null {
   return null;
 }
 
-// --- Cookie jar (manual management for Workers compatibility) ---
+// --- wreq-js session flow ---
 
-class CookieJar {
-  private cookies = new Map<string, string>();
-
-  /** Extract Set-Cookie headers from a Response and store them */
-  capture(response: Response) {
-    // response.headers.getSetCookie() is available in Workers
-    const setCookies = response.headers.getSetCookie?.() ?? [];
-    for (const header of setCookies) {
-      const eqIdx = header.indexOf("=");
-      if (eqIdx < 0) continue;
-      const name = header.slice(0, eqIdx).trim();
-      const rest = header.slice(eqIdx + 1);
-      const value = rest.split(";")[0].trim();
-      if (name && value) {
-        this.cookies.set(name, value);
-      }
-    }
-  }
-
-  /** Build a Cookie header string */
-  toHeader(): string {
-    return Array.from(this.cookies.entries()).map(([k, v]) => `${k}=${v}`).join("; ");
-  }
-
-  get(name: string): string | undefined {
-    return this.cookies.get(name);
-  }
-
-  getAll(): Map<string, string> {
-    return new Map(this.cookies);
-  }
-}
-
-// --- Standard fetch flow (no wreq-js) ---
-
-function makeHeaders(guestToken?: string, cookieJar?: CookieJar): Record<string, string> {
+function makeHeaders(guestToken?: string): Record<string, string> {
   const h: Record<string, string> = {
     Authorization: `Bearer ${BEARER_TOKEN}`,
     "Content-Type": "application/json",
     Accept: "*/*",
     "Accept-Language": "en-US",
     "X-Twitter-Client-Language": "en-US",
-    "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
     Origin: "https://x.com",
     Referer: "https://x.com/",
   };
   if (guestToken) h["X-Guest-Token"] = guestToken;
-  if (cookieJar) h["Cookie"] = cookieJar.toHeader();
   return h;
 }
 
 async function flowPost(
-  jar: CookieJar,
+  session: any,
   url: string,
   body: any,
   headers: Record<string, string>,
   label: string,
 ): Promise<{ flowToken: string; data: any }> {
   console.log(`[x-login] ${label}...`);
-  const res = await fetch(url, {
+  const res = await session.fetch(url, {
     method: "POST",
     body: JSON.stringify(body),
-    headers: { ...headers, Cookie: jar.toHeader() },
-    redirect: "manual",
+    headers,
   });
-
-  jar.capture(res);
 
   if (res.status >= 400) {
     const text = await res.text();
@@ -164,32 +129,28 @@ export async function loginWithCredentials(
   username: string,
   password: string,
   totpRaw?: string,
-  email?: string,
 ): Promise<LoginResult> {
   const totpSecret = parseTotpSecret(totpRaw);
-  const jar = new CookieJar();
+
+  // Create a wreq session impersonating Chrome (bypasses Cloudflare TLS checks)
+  const session = await wreq.createSession({ browser: "chrome_131" });
 
   // 1. Get guest token
   console.log("[x-login] getting guest token...");
-  const guestRes = await fetch(GUEST_URL, {
+  const guestRes = await session.fetch(GUEST_URL, {
     method: "POST",
-    headers: {
-      Authorization: `Bearer ${BEARER_TOKEN}`,
-      "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
-    },
-    redirect: "manual",
+    headers: { Authorization: `Bearer ${BEARER_TOKEN}` },
   });
-  jar.capture(guestRes);
   const guestData = await guestRes.json() as any;
   const guestToken: string = guestData.guest_token;
   if (!guestToken) throw new Error("Failed to get guest token");
   console.log(`[x-login] guest token: ${guestToken}`);
 
-  const headers = makeHeaders(guestToken, jar);
+  const headers = makeHeaders(guestToken);
 
   // 2. Init login flow
   const { flowToken: ft1 } = await flowPost(
-    jar,
+    session,
     `${BASE_URL}?flow_name=login`,
     {
       input_flow_data: {
@@ -202,7 +163,7 @@ export async function loginWithCredentials(
   );
 
   // 3. JS instrumentation
-  const { flowToken: ft2 } = await flowPost(jar, BASE_URL, {
+  const { flowToken: ft2 } = await flowPost(session, BASE_URL, {
     flow_token: ft1,
     subtask_inputs: [{
       subtask_id: "LoginJsInstrumentationSubtask",
@@ -222,7 +183,7 @@ export async function loginWithCredentials(
   }, headers, "JS instrumentation");
 
   // 4. Username
-  const { flowToken: ft3, data: usernameData } = await flowPost(jar, BASE_URL, {
+  const { flowToken: ft3, data: usernameData } = await flowPost(session, BASE_URL, {
     flow_token: ft2,
     subtask_inputs: [{
       subtask_id: "LoginEnterUserIdentifierSSO",
@@ -239,27 +200,9 @@ export async function loginWithCredentials(
     if (msg) throw new Error(`Login denied: ${msg}`);
   }
 
-  // 4b. Alternate identifier challenge (Twitter asks for email/phone confirmation)
-  let ftBeforePassword = ft3;
-  const needsAlternateId = (usernameData.subtasks ?? []).some(
-    (s: any) => s.subtask_id === "LoginEnterAlternateIdentifierSubtask"
-  );
-  if (needsAlternateId) {
-    console.log("[x-login] Twitter is asking for alternate identifier (email/phone)...");
-    const altId = email || username; // Use email if provided, fall back to username
-    const { flowToken: ftAlt } = await flowPost(jar, BASE_URL, {
-      flow_token: ft3,
-      subtask_inputs: [{
-        subtask_id: "LoginEnterAlternateIdentifierSubtask",
-        enter_text: { text: altId, link: "next_link" },
-      }],
-    }, headers, "submitting alternate identifier");
-    ftBeforePassword = ftAlt;
-  }
-
   // 5. Password
-  const { flowToken: ft4, data: pwData } = await flowPost(jar, BASE_URL, {
-    flow_token: ftBeforePassword,
+  const { flowToken: ft4, data: pwData } = await flowPost(session, BASE_URL, {
+    flow_token: ft3,
     subtask_inputs: [{ subtask_id: "LoginEnterPassword", enter_password: { password, link: "next_link" } }],
   }, headers, "submitting password");
 
@@ -271,7 +214,7 @@ export async function loginWithCredentials(
     if (!totpSecret) throw new Error("2FA required but no TOTP secret provided");
     const code = await generateTotp(totpSecret);
     console.log(`[x-login] submitting 2FA code...`);
-    const { flowToken: ft6 } = await flowPost(jar, BASE_URL, {
+    const { flowToken: ft6 } = await flowPost(session, BASE_URL, {
       flow_token: ft4,
       subtask_inputs: [{ subtask_id: "LoginTwoFactorAuthChallenge", enter_text: { text: code, link: "next_link" } }],
     }, headers, "2FA verification");
@@ -280,32 +223,65 @@ export async function loginWithCredentials(
 
   // 7. Complete flow (AccountDuplicationCheck) — may 401, cookies already set
   try {
-    const ct0Before = jar.get("ct0") ?? "";
-    await flowPost(jar, BASE_URL, {
+    const cookiesBeforeFinal = await session.getCookies("https://api.x.com") as Record<string, string>;
+    const ct0BeforeFinal = cookiesBeforeFinal.ct0 ?? "";
+    await flowPost(session, BASE_URL, {
       flow_token: ft5,
       subtask_inputs: [{ subtask_id: "AccountDuplicationCheck", check_logged_in_account: { link: "AccountDuplicationCheck_false" } }],
-    }, { ...headers, "X-Twitter-Auth-Type": "OAuth2Session", "X-Csrf-Token": ct0Before, Cookie: jar.toHeader() }, "completing login flow");
+    }, { ...headers, "X-Twitter-Auth-Type": "OAuth2Session", "X-Csrf-Token": ct0BeforeFinal }, "completing login flow");
   } catch (e: any) {
-    // 401 here is expected — cookies are already set after password/2FA step
+    // 401 here is expected — cookies are already set after 2FA step
     if (!e.message.includes("401")) throw e;
   }
 
-  // Extract cookies
-  const authToken = jar.get("auth_token") ?? "";
-  const ct0 = jar.get("ct0") ?? "";
+  // Extract cookies (getCookies(url) returns Record<string,string>)
+  const cookies: Record<string, string> = await session.getCookies("https://api.x.com") ?? {};
+  const authToken: string = cookies.auth_token ?? "";
+  const ct0: string = cookies.ct0 ?? "";
 
   if (!authToken || !ct0) {
-    throw new Error(`Login failed — no auth cookies received. Got keys: ${Array.from(jar.getAll().keys()).join(", ")}`);
+    throw new Error(`Login failed — no auth cookies received. Got keys: ${Object.keys(cookies).join(", ")}`);
   }
 
   const result: LoginResult = {
     kind: "cookie",
     username,
-    id: extractUserId(jar.getAll()),
+    id: extractUserId(cookies),
     auth_token: authToken,
     ct0,
   };
 
   console.log(`[x-login] ✅ authenticated as @${username} (id: ${result.id})`);
+  await session.close();
   return result;
+}
+
+export async function loginAndSave(
+  username: string,
+  password: string,
+  totpRaw?: string,
+  outputPath = "session/sessions.jsonl",
+): Promise<LoginResult> {
+  const session = await loginWithCredentials(username, password, totpRaw);
+  await mkdir(dirname(outputPath), { recursive: true });
+  await appendFile(outputPath, JSON.stringify(session) + "\n", "utf8");
+  console.log(`[x-login] session saved to ${outputPath}`);
+  return session;
+}
+
+// CLI entry point: bun run src/server/sessions/login.ts <user> <pass> [totp] [--append path]
+if (import.meta.main) {
+  const args = process.argv.slice(2);
+  const [username, password, totp] = args;
+  const appendIdx = args.indexOf("--append");
+  const outputPath = appendIdx >= 0 ? args[appendIdx + 1] : "session/sessions.jsonl";
+
+  if (!username || !password) {
+    console.error("Usage: bun run src/server/sessions/login.ts <username> <password> [totp_secret|otpauth_uri] [--append path]");
+    process.exit(1);
+  }
+
+  loginAndSave(username, password, totp, outputPath)
+    .then(() => process.exit(0))
+    .catch((err) => { console.error(`[x-login] ❌ ${err.message}`); process.exit(1); });
 }

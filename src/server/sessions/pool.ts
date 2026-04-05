@@ -72,17 +72,17 @@ function parseSession(line: string): Session | null {
 }
 
 /**
- * Initialize the session pool from a JSONL file
+ * Initialize the session pool from KV
  */
-export async function initSessionPool(path: string) {
-  const file = Bun.file(path);
-  if (!(await file.exists())) {
-    console.warn(`[sessions] WARNING: ${path} not found. API requests will fail.`);
+export async function initSessionPool(env: any, forceReload = false) {
+  if (!env?.UNBIRD_SESSIONS) return;
+  const content = await env.UNBIRD_SESSIONS.get("sessions.jsonl");
+  if (!content) {
+    console.warn("[sessions] WARNING: sessions.jsonl not found in KV. API requests will fail.");
     return;
   }
 
-  const content = await file.text();
-  const lines = content.split("\n").filter((l) => l.trim().length > 0);
+  const lines = content.split("\n").filter((l: string) => l.trim().length > 0);
 
   for (const line of lines) {
     const session = parseSession(line);
@@ -91,7 +91,7 @@ export async function initSessionPool(path: string) {
     }
   }
 
-  console.log(`[sessions] loaded ${sessionPool.length} sessions from ${path}`);
+  console.log(`[sessions] loaded ${sessionPool.length} sessions from KV`);
 }
 
 // --- Session selection ---
@@ -190,7 +190,7 @@ export async function getSessionAsync(apiKey: string): Promise<Session> {
 
     if (waitSecs > 0 && waitSecs <= MAX_WAIT_SECS) {
       console.log(`[sessions] waiting ${Math.ceil(waitSecs)}s for ${apiKey} rate limit reset...`);
-      await Bun.sleep((waitSecs + 1) * 1000); // +1s buffer
+      await new Promise(r => setTimeout(r, (waitSecs + 1) * 1000)); // +1s buffer
       return getSession(apiKey); // retry after wait
     }
 

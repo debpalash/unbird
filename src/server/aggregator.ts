@@ -6,27 +6,38 @@ export const globalPublicFeedCache: { tweets: Tweet[]; lastUpdated: number } = {
   lastUpdated: 0,
 };
 
-// Extremely Safe, SFW top global accounts
+export async function loadAggregatorCache(env: any) {
+  if (!env?.UNBIRD_CACHE) return;
+  try {
+    const dataStr = await env.UNBIRD_CACHE.get("global_feed_cache.json");
+    if (dataStr) {
+      const data = JSON.parse(dataStr);
+      globalPublicFeedCache.tweets = data.tweets || [];
+      globalPublicFeedCache.lastUpdated = data.lastUpdated || 0;
+    }
+  } catch (e) { /* ignore */ }
+}
+
+export async function saveAggregatorCache(env: any) {
+  if (!env?.UNBIRD_CACHE) return;
+  try {
+    await env.UNBIRD_CACHE.put("global_feed_cache.json", JSON.stringify(globalPublicFeedCache));
+  } catch (e) { /* ignore */ }
+}
+
 const SAFE_TOP_PROFILES = [
-  // News & Science
   "BBCWorld", "NASA", "SpaceX", "NatGeo", "TheEconomist", "WSJ", "neiltyson", "PopSci", 
-  // Tech & Innovators
   "TechCrunch", "WIRED", "elonmusk", "tim_cook", "satyanadella", "MKBHD", "PopBase", 
-  // Entertainment & Gaming
   "DiscussingFilm", "IGN", "TheAcademy", "Marvel", "Disney", "MarvelStudios", "StarWars",
-  // Sports
   "ESPN", "ChampionsLeague", "NFL", "NBA", "premierleague", "FCBarcelona", "realmadrid",
-  // Popular Celebs & Creators
   "MrBeast", "taylorswift13", "TheRock", "ladygaga", "LeoDiCaprio", "Oprah", "EmmaWatson", "GordonRamsay", "shakira", "BrunoMars",
-  // Major Companies & Brands
   "Apple", "Google", "Microsoft", "amazon", "SamsungMobile", "Intel", "Nike", "MercedesBenz", "Porsche", "Sony"
 ];
 
 let currentIndex = 0;
 let isAggregatorRunning = false;
 
-// Aggregation process
-async function aggregateNextProfile() {
+export async function aggregateNextProfile(env: any) {
   const handle = SAFE_TOP_PROFILES[currentIndex];
   if (!handle) return;
   currentIndex = (currentIndex + 1) % SAFE_TOP_PROFILES.length;
@@ -39,13 +50,9 @@ async function aggregateNextProfile() {
     const tweets = profile.tweets?.content || [];
     const flatTweets = tweets.flat();
 
-    // Only pick tweets with media if possible, or just normal tweets, no retweets
     const validTweets = flatTweets.filter(t => !t.retweet && !t.replyId);
-
-    // Merge into cache, avoid duplicates by ID
     const existingIds = new Set(globalPublicFeedCache.tweets.map(t => t.id));
     
-    // Also deduplicate new tweets internally
     const uniqueNewTweets = [];
     for (const t of validTweets) {
       if (!existingIds.has(t.id)) {
@@ -55,28 +62,26 @@ async function aggregateNextProfile() {
     }
 
     globalPublicFeedCache.tweets = [...uniqueNewTweets, ...globalPublicFeedCache.tweets]
-      // Sort purely by time descending
       .sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime())
-      // Keep only top 200 to prevent memory leak
       .slice(0, 200);
 
     globalPublicFeedCache.lastUpdated = Date.now();
-  } catch (e) {
-    // silently fail and retry next time
+    await saveAggregatorCache(env);
+  } catch (e) { }
+}
+
+export async function refreshAggregator(env: any) {
+  if (isAggregatorRunning) return;
+  isAggregatorRunning = true;
+  try {
+    await loadAggregatorCache(env);
+    await aggregateNextProfile(env);
+    await aggregateNextProfile(env); 
+  } finally {
+    isAggregatorRunning = false;
   }
 }
 
 export async function startAggregator() {
-  if (isAggregatorRunning) return;
-  isAggregatorRunning = true;
-
-  // Initial burst to quickly fill the cache on startup
-  for (let i = 0; i < 5; i++) {
-    await aggregateNextProfile();
-  }
-
-  // Then slow poll every 60 seconds
-  setInterval(() => {
-    aggregateNextProfile();
-  }, 60 * 1000);
+  throw new Error("startAggregator() is deprecated. Use cron triggers.");
 }

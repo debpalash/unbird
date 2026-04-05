@@ -18,7 +18,9 @@
     "dev:client": "bunx vite",
     "build": "bunx vite build",
     "start": "NODE_ENV=production bun src/index.ts",
-    "x:login": "bun run src/server/sessions/login.ts",
+    "deploy": "wrangler deploy",
+    "dev:cf": "wrangler dev",
+    "x:login": "bun run src/scripts/login.ts",
     "x:login:browser": "bun run session/x-login.ts"
   },
   "dependencies": {
