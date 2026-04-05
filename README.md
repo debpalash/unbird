@@ -67,7 +67,7 @@ docker run -d \
   -p 3069:3069 \
   -e X_USERNAME=your_username \
   -e X_PASSWORD=your_password \
-  ghcr.io/user4/unbird:latest
+  ghcr.io/debpalash/unbird:latest
 ```
 
 Open **http://localhost:3069** — done!
@@ -77,7 +77,7 @@ Open **http://localhost:3069** — done!
 ```yaml
 services:
   unbird:
-    image: ghcr.io/user4/unbird:latest
+    image: ghcr.io/debpalash/unbird:latest
     ports:
       - "3069:3069"
     environment:
