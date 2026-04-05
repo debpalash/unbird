@@ -13,7 +13,8 @@
 
 <p align="center">
   <strong>A privacy-first, self-hosted X/Twitter alternative frontend.</strong><br/>
-  No tracking. No ads. No algorithms. OSINT-ready. Just tweets.
+  No tracking. No ads. No algorithms. OSINT-ready. Just tweets.<br/>
+  <em>Inspired by Nitter and Invidious.</em>
 </p>
 
 ---
