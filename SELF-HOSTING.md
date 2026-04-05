@@ -70,7 +70,7 @@ docker run -d \
   -v ./session:/app/session \
   -v ./cache:/app/cache \
   --env-file .env \
-  ghcr.io/user4/unbird:latest
+  ghcr.io/debpalash/unbird:latest
 ```
 
 ---
